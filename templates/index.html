@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Auto Completion on Searching Indonesian News Title</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="{{ url_for('static', filename='css/cinda.css') }}" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <h1 class="text-center">Aplikasi Auto Completion on Searching Indonesian News Title based on Probability Method</h1>
+
+        <div class="mt-4">
+            <label for="method" class="form-label">Pilih Metode Pencarian:</label>
+            <select class="form-select" id="method">
+                <option value="tfidf">TF-IDF</option>
+                <option value="ngram">N-Gram</option>
+            </select>
+        </div>
+
+        <div class="search-bar mt-3">
+            <label for="search-input" class="form-label">Masukkan Judul Berita:</label>
+            <i class="fas fa-search"></i>
+            <input type="text" class="form-control" id="search-input" placeholder="Cari judul berita...">
+            <i class="fa-solid fa-circle-xmark delete-icon" style="display: none;"></i>
+        </div>                
+
+        <div class="mt-4 recommendation-container">
+            <p class="recommended-title">Recommended:</p>
+            <div class="recommended-tags">
+                <div class="recommended-tag">
+                    <a href="#">Edukasi</a>
+                </div>
+                <div class="recommended-tag">
+                    <a href="#">Politik</a>
+                </div>
+                <div class="recommended-tag">
+                    <a href="#">Bisnis</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-3" id="results">
+        </div>
+    </div>
+
+    <script>
+        const searchInput = document.getElementById('search-input');
+        const deleteIcon = document.querySelector('.delete-icon');
+        const resultsContainer = document.getElementById('results');
+        const methodSelect = document.getElementById('method');
+        const recommendedTags = document.querySelectorAll('.recommended-tag a');
+
+        function performSearch(query, method) {
+            fetch(`/search?query=${encodeURIComponent(query)}&method=${encodeURIComponent(method)}`)
+            .then(response => response.json())
+            .then(data => {
+                resultsContainer.innerHTML = '';
+                if (data.length > 0) {
+                    data.forEach(item => {
+                        const resultItem = `
+                            <div class="mt-2 p-2 border rounded">
+                                <a href="${item.url}" target="_blank">${item.title}</a>
+                                <p>Probability: ${item.probability}</p>
+                            </div>
+                        `;
+                        resultsContainer.innerHTML += resultItem;
+                    });
+                } else {
+                    resultsContainer.innerHTML = '<p class="text-muted">Tidak ada hasil yang ditemukan.</p>';
+                }
+                resultsContainer.style.display = 'block';
+            })
+            .catch(error => {
+                console.error('Error fetching results:', error);
+                resultsContainer.innerHTML = '<p class="text-danger">Error loading results. Please try again.</p>';
+                resultsContainer.style.display = 'block';
+            });
+        }
+
+        // Listener untuk input perubahan
+        searchInput.addEventListener('input', function() {
+            const query = this.value.trim();
+            const method = methodSelect.value;
+
+            if (query.length > 2) {
+                deleteIcon.style.display = 'inline-block'; // Tampilkan tombol hapus
+                performSearch(query, method); // Lakukan pencarian
+            } else {
+                deleteIcon.style.display = 'none'; // Sembunyikan tombol hapus
+                resultsContainer.innerHTML = '';
+                resultsContainer.style.display = 'none'; // Sembunyikan container hasil
+            }
+        });
+
+        // Listener untuk tombol hapus
+        deleteIcon.addEventListener('click', function() {
+            searchInput.value = '';
+            deleteIcon.style.display = 'none';
+            resultsContainer.innerHTML = '';
+            resultsContainer.style.display = 'none';
+            searchInput.focus(); // Kembali fokus ke input
+        });
+
+        // Tambahkan event listener ke setiap tag
+        recommendedTags.forEach(tag => {
+            tag.addEventListener('click', function(e) {
+                e.preventDefault(); // Mencegah link default
+                const tagText = this.textContent; // Ambil teks dari tag yang ditekan
+                searchInput.value = tagText; // Masukkan teks ke dalam input pencarian
+                deleteIcon.style.display = 'inline-block'; // Tampilkan tombol hapus
+
+                // Trigger event 'input' secara manual untuk memaksa deteksi perubahan pada search bar
+                const event = new Event('input');
+                searchInput.dispatchEvent(event); // Memicu event 'input'
+            });
+        });
+    </script>
+</body>
+</html>
